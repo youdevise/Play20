@@ -45,8 +45,8 @@ object PlayBuild extends Build {
             libraryDependencies := runtime,
             sourceGenerators in Compile <+= sourceManaged in Compile map PlayVersion,
             publishTo := Some(playRepository),
-            scalacOptions ++= Seq("-Xlint","-deprecation", "-unchecked","-encoding", "utf8"),
-            javacOptions ++= Seq("-encoding", "utf8"),
+            scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
+            javacOptions ++= Seq("-encoding", "UTF-8"),
             publishArtifact in (Compile, packageDoc) := false,
             publishArtifact in (Compile, packageSrc) := true,
             resolvers += typesafe,
@@ -61,8 +61,8 @@ object PlayBuild extends Build {
       settings = buildSettings ++ Seq(
         libraryDependencies := testDependencies,
         publishTo := Some(playRepository),
-        scalacOptions ++= Seq("-deprecation","-Xcheckinit", "-encoding", "utf8"),
-        javacOptions ++= Seq("-encoding", "utf8"),
+        scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
+        javacOptions ++= Seq("-encoding", "UTF-8"),
         publishArtifact in (Compile, packageDoc) := false,
         publishArtifact in (Compile, packageSrc) := true,
         resolvers += typesafe
