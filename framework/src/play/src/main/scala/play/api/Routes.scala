@@ -38,8 +38,6 @@ package play.api {
           """.stripMargin.format(
         name,
         ajaxMethod.map("ajax:function(c){c.url=r.url;c.type=r.method;return " + _ + "(c)},").getOrElse(""),
-        host,
-        host,
         routes.map { route =>
           "_nS('%s'); _root.%s = %s".format(
             route.name.split('.').dropRight(1).mkString("."),
