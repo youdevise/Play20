@@ -80,19 +80,48 @@ public class F {
 
     public static class Promise<A> {
 
-        public static <A> Promise<A> waitAll(Promise<A>... promises){
-
+           /**
+         * Combine the given promises into a single promise for the list of results.
+         *
+         * @param promises The promises to combine
+         * @return A single promise whose methods act on the list of redeemed promises
+         */
+        public static <A> Promise<List<A>> waitAll(Promise<? extends A>... promises){
             return new Promise<List<A>>(play.core.j.JavaPromise.<A>sequence(java.util.Arrays.asList(promises)));
         }
 
-        public static <A> Promise<A> waitAll(Iterable<Promise<A>> promises){
+        /**
+         * Create a Promise that is redeemed after a timeout.
+         *
+         * @param message The message to use to redeem the Promise.
+         * @param delay The delay (expressed with the corresponding unit).
+         * @param unit The Unit.
+         */
+        public static <A> Promise<A> timeout(A message, Long delay, java.util.concurrent.TimeUnit unit) {
+            return new Promise(play.core.j.JavaPromise.timeout(message, delay, unit));
+        }
 
-            ArrayList<Promise<A>> ps = new ArrayList<Promise<A>>();
+        /**
+         * Create a Promise that is redeemed after a timeout.
+         *
+         * @param message The message to use to redeem the Promise.
+         * @param delay The delay expressed in Milliseconds.
+         */
+        public static <A> Promise<A> timeout(A message, Long delay) {
+            return timeout(message, delay, java.util.concurrent.TimeUnit.MILLISECONDS);
+        }
 
-            for(Promise<A> p : promises){
+        /**
+         * Combine the given promises into a single promise for the list of results.
+         *
+         * @param promises The promises to combine
+         * @return A single promise whose methods act on the list of redeemed promises
+         */
+        public static <A> Promise<List<A>> waitAll(Iterable<Promise<? extends A>> promises){
+            ArrayList<Promise<? extends A>> ps = new ArrayList<Promise<? extends A>>();
+            for(Promise<? extends A> p : promises){
                 ps.add(p);
             }
-
             return new Promise<List<A>>(play.core.j.JavaPromise.<A>sequence(ps));
         }
 

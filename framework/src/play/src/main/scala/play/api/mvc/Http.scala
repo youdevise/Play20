@@ -220,6 +220,7 @@ package play.api.mvc {
 
   }
 
+  
   /**
    * Trait that should be extended by the Cookie helpers.
    */
@@ -239,21 +240,6 @@ package play.api.mvc {
      * `true` if the Cookie is signed. Defaults to false.
      */
     val isSigned: Boolean = false
-
-    /**
-     * `true` if the Cookie should have the httpOnly flag, disabling access from Javascript. Defaults to true.
-     */
-    val httpOnly = true
-
-    /**
-     * The cookie expiration date in seconds, `-1` for a transient cookie
-     *      */
-    val maxAge = -1
-
-    /**
-     * `true` if the Cookie should have the secure flag, restricting usage to https. Defaults to false.
-     */
-    val secure = false
 
     /**
      * Encodes the data as a `String`.
@@ -293,7 +279,7 @@ package play.api.mvc {
      */
     def encodeAsCookie(data: T): Cookie = {
       val cookie = encode(serialize(data))
-      Cookie(COOKIE_NAME, cookie, maxAge, "/", None, secure, httpOnly)
+      Cookie(COOKIE_NAME, cookie, -1, "/", None, false, true)
     }
 
     /**
@@ -321,6 +307,7 @@ package play.api.mvc {
 
   }
 
+  
   /**
    * HTTP Session.
    *
@@ -375,12 +362,18 @@ package play.api.mvc {
    * Helper utilities to manage the Session cookie.
    */
   object Session extends CookieBaker[Session] {
+    private lazy val secure = Play.maybeApplication.map(a => a.configuration.getBoolean("session.secure")).flatMap(x => x).getOrElse(false)
+    private lazy val maxAge = Play.maybeApplication.map(a => a.configuration.getInt("session.maxAge")).flatMap(x => x).getOrElse(-1)
+    private lazy val httpOnly = Play.maybeApplication.flatMap(_.configuration.getBoolean("session.httpOnly")).getOrElse(true)
+
     val COOKIE_NAME = Play.maybeApplication.map(a => a.configuration.getString("session.cookieName")).flatMap(x => x).getOrElse("PLAY_SESSION")
     val emptyCookie = new Session
     override val isSigned = true
-    override val secure = Play.maybeApplication.map(a => a.configuration.getBoolean("session.secure")).flatMap(x => x).getOrElse(false)
-    override val maxAge = Play.maybeApplication.map(a => a.configuration.getInt("session.maxAge")).flatMap(x => x).getOrElse(-1)
 
+    override def encodeAsCookie(data: Session): Cookie = {
+      val cookie = encode(serialize(data))
+      Cookie(COOKIE_NAME, cookie, maxAge, "/", None, secure, httpOnly)
+    }
     def deserialize(data: Map[String, String]) = new Session(data)
 
     def serialize(session: Session) = session.data
@@ -392,6 +385,7 @@ package play.api.mvc {
    * Flash data are encoded into an HTTP cookie, and can only contain simple `String` values.
    */
   case class Flash(data: Map[String, String] = Map.empty[String, String]) {
+    
 
     /**
      * Optionally returns the flash value associated with a key.
@@ -440,7 +434,6 @@ package play.api.mvc {
    * Helper utilities to manage the Flash cookie.
    */
   object Flash extends CookieBaker[Flash] {
-
     val COOKIE_NAME = "PLAY_FLASH"
     val emptyCookie = new Flash
 
