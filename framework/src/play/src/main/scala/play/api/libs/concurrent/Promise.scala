@@ -85,7 +85,7 @@ trait Promise[+A] {
     p
   }
 
-  def orTimeout[B](message: => B, duration: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): Promise[Either[A, B]] = {
+  def orTimeout[B](message: B, duration: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): Promise[Either[A, B]] = {
     or(Promise.timeout(message, duration, unit))
   }
 
