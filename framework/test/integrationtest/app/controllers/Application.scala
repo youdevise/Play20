@@ -12,7 +12,7 @@ import models._
 import models.Protocol._
 
 import play.cache.{Cache=>JCache}
-
+import play.api.i18n._
 
 object Application extends Controller {
 
