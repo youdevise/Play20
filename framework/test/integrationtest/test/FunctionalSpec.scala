@@ -106,34 +106,7 @@ class FunctionalSpec extends Specification {
         browser.goTo("http://localhost:9001/clear/foo")
         browser.getCookies.size must equalTo(0)
 
-        // --- Javascript Reverse Router
-
-        browser.webDriver match {
-          case htmlunit: HtmlUnitDriver => htmlunit.setJavascriptEnabled(true)
-        }
-        browser.goTo("http://localhost:9001/javascript-test?name=guillaume")
-
-        browser.$("#route-url").click()
-        browser.$("#result").getTexts().get(0) must equalTo ("/javascript-test?name=world")
-
-        browser.$("#route-abs-url").click()
-        browser.$("#result").getTexts().get(0) must equalTo ("http://localhost:9001/javascript-test?name=world")
-
-        browser.$("#route-abs-secure-url").click()
-        browser.$("#result").getTexts().get(0) must equalTo ("https://localhost:9001/javascript-test?name=world")
-
-        browser.$("#route-abs-secure-url2").click()
-        browser.$("#result").getTexts().get(0) must equalTo ("https://localhost:9001/javascript-test?name=world")
-
-        browser.$("#route-ws-url").click()
-        browser.$("#result").getTexts().get(0) must equalTo ("ws://localhost:9001/javascript-test?name=world")
-
-        browser.$("#route-ws-secure-url").click()
-        browser.$("#result").getTexts().get(0) must equalTo ("wss://localhost:9001/javascript-test?name=world")
-
-        browser.$("#route-ws-secure-url2").click()
-        browser.$("#result").getTexts().get(0) must equalTo ("wss://localhost:9001/javascript-test?name=world")
-      }
+         }
     }
 
   }
