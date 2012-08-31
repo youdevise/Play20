@@ -126,7 +126,7 @@ object Router {
 
     def compile(file: File, generatedDir: File, additionalImports: Seq[String]) {
 
-      val generated = GeneratedSource(new File(generatedDir, "routes_routing.scala"))
+      val generated = GeneratedSource(new File(generatedDir, "routes_reverseRoutingJs.scala"))
 
       if (generated.needsRecompilation) {
 
@@ -215,8 +215,11 @@ object Router {
       check(new File(file.path), rules.collect { case r: Route => r });
 
       val (path, hash, date) = (file.path.replace(File.separator, "/"), Hash(file.byteArray), new java.util.Date().toString)
-
-      Seq(("routes_reverseRouting.scala",
+      val routerPackageImport = Option(file.name).filter(_.endsWith(".routes")).map(_.dropRight(".routes".size)).map("import " + _ + ".Routes").getOrElse("")
+      val routes = rules.collect { case r: Route => r }
+      val defs = includedRoutesDefinition(rules)
+      reverseRouting(path,hash,date,routerPackageImport, routes) ++ Seq(
+        ("routes_reverseRoutingJs.scala",
         """ |// @SOURCE:%s
             |// @HASH:%s
             |// @DATE:%s
@@ -233,18 +236,13 @@ object Router {
             |
             |%s
             |
-            |%s
-            |
-            |%s
         """.stripMargin.format(
           path,
           hash,
           date,
-          Option(file.name).filter(_.endsWith(".routes")).map(_.dropRight(".routes".size)).map("import " + _ + ".Routes").getOrElse(""),
+          routerPackageImport,
           additionalImports.map("import " + _).mkString("\n"),
-          reverseRouting(rules.collect { case r: Route => r }),
-          javaScriptReverseRouting(rules.collect { case r: Route => r }),
-          refReverseRouting(rules.collect { case r: Route => r })
+          javaScriptReverseRouting(routes)
         )
       ),
         ("routes_routing.scala",
@@ -277,12 +275,13 @@ object Router {
               |
               |lazy val defaultPrefix = { if(Routes.prefix.endsWith("/")) "" else "/" } 
               |
-              |%s 
               |    
-              |def routes:PartialFunction[RequestHeader,Handler] = {        
               |%s
-              |}
               |    
+              |private val routers = List(%s).map(_.routes)
+              |def routes:PartialFunction[RequestHeader,Handler] = {        
+              |  routers.reduceLeft(_ orElse _) %s
+              |}
               |}
           """.stripMargin.format(
             path,
@@ -291,71 +290,69 @@ object Router {
             Option(file.name).filter(_.endsWith(".routes")).map(_.dropRight(".routes".size)).map("package " + _).getOrElse(""),
             additionalImports.map("import " + _).mkString("\n"),
             rules.collect { case Include(p, r) => "(\"" + p + "\"," + r + ")" }.mkString(","),
-            routeDefinitions(rules),
-            routing(rules)
+            defs._1,
+            routes.groupBy(_.call.controller).map {
+                    case (controller, _) => controller
+            }.map(n=>" Class.forName(\""+n+"RoutesDispatcher"+"\").newInstance().asInstanceOf[Router.RoutesDispatcher]").mkString(","),          
+            defs._2
+            //routing(rules)
           )
-        )) ++ {
+        )) ++ { 
 
           // Generate Java wrappers
 
           rules.collect { case r: Route => r }.groupBy(_.call.packageName).map {
             case (packageName, routes) => {
 
-              (packageName.replace(".", "/") + "/routes.java") -> {
+              Seq((packageName+".routes".replace(".", "/") + "/javascript.java") -> {
 
                 """ |// @SOURCE:%s
                     |// @HASH:%s
                     |// @DATE:%s
                     |
-                    |package %s;
+                    |package %s.routes;
                     |
-                    |public class routes {
-                    |%s
-                    |public static class javascript {
+                    |public class javascript {
                     |%s    
                     |}   
-                    |public static class ref {
-                    |%s    
-                    |} 
-                    |}
                 """.stripMargin.format(
                   path, hash, date,
                   packageName,
 
                   routes.groupBy(_.call.controller).map {
-                    case (controller, routes) => {
-                      val fields = routes.groupBy(_.call.field)
-                      if (fields.size == 1 && fields.keys.head == None) {
-                        "public static final " + packageName + ".Reverse" + controller + " " + controller + " = new " + packageName + ".Reverse" + controller + "();"
-                      } else {
-                        "public static class Reverse" + controller + " extends " + packageName + ".Reverse" + controller + " {\n" + {
-                          fields.keys.collect { case Some(f) => f }.map { field =>
-                            "public Reverse" + controller + "_" + field + " " + field + " = this.new Reverse" + controller + "_" + field + "();"
-                          }.mkString("\n")
-                        } + "\n}\n" +
-                          "public static final Reverse" + controller + " " + controller + " = new Reverse" + controller + "();"
-                      }
-                    }
-                  }.mkString("\n"),
-
-                  routes.groupBy(_.call.controller).map {
                     case (controller, _) => {
                       "public static final " + packageName + ".javascript.Reverse" + controller + " " + controller + " = new " + packageName + ".javascript.Reverse" + controller + "();"
                     }
-                  }.mkString("\n"),
+                  }.mkString("\n")
+                )
 
+              },
+              (packageName+".routes".replace(".", "/") + "/ref.java") -> {
+
+                """ |// @SOURCE:%s
+                    |// @HASH:%s
+                    |// @DATE:%s
+                    |
+                    |package %s.routes;
+                    |
+                    |public class ref {
+                    |%s    
+                    |}   
+                """.stripMargin.format(
+                  path, hash, date,
+                  packageName,
                   routes.groupBy(_.call.controller).map {
                     case (controller, _) => {
                       "public static final " + packageName + ".ref.Reverse" + controller + " " + controller + " = new " + packageName + ".ref.Reverse" + controller + "();"
                     }
                   }.mkString("\n")
-
                 )
 
               }
+              )
 
             }
-          }
+          }.flatten
 
         }
 
@@ -538,10 +535,7 @@ object Router {
     /**
      * Generate the routing refs
      */
-    def refReverseRouting(routes: List[Route]): String = {
-
-      routes.groupBy(_.call.packageName).map {
-        case (packageName, routes) => {
+    def refReverseRouting(packageName: String, controller: String, routes: List[Route]): String = {
 
           """
                         |%s
@@ -551,9 +545,6 @@ object Router {
                     """.stripMargin.format(
             markLines(routes: _*),
             packageName,
-
-            routes.groupBy(_.call.controller).map {
-              case (controller, routes) =>
                 """
                                 |%s
                                 |class Reverse%s {
@@ -610,35 +601,38 @@ object Router {
 
                     }
 
-                  }.mkString("\n"))
-            }.mkString("\n"))
-
-        }
-      }.mkString("\n")
-    }
-
+                  }.mkString("\n")))
+  }
     /**
      * Generate the reverse routing operations
      */
-    def reverseRouting(routes: List[Route]): String = {
+    def reverseRouting(path: String, hash: String, date: String, routerPackageImport: String, routes: List[Route]): Seq[(String, String)] = {
 
-      routes.groupBy(_.call.packageName).map {
-        case (packageName, routes) => {
-
-          """
-                        |%s
-                        |package %s {
-                        |%s
-                        |}
-                    """.stripMargin.format(
-            markLines(routes: _*),
-            packageName,
-
+      val content = routes.groupBy(_.call.packageName).map {
+        case (packageName, totalRoutes) => 
             routes.groupBy(_.call.controller).map {
               case (controller, routes) =>
+
+                """ |// @SOURCE:%s
+                    |// @HASH:%s
+                    |// @DATE:%s
+                    |import play.core._
+                    |import play.core.Router._
+                    |import play.core.j._
+                    |import play.api.mvc._
+                    |%s
+                    |%s
+                    |package %s.routes {
+                    |%s
+                    |}
+                    """.stripMargin.format(
+                      path, hash,date,routerPackageImport,
+                      markLines(totalRoutes: _*),
+                      packageName,
+
                 """
                                 |%s
-                                |class Reverse%s {
+                                |object %s {
                                 |    
                                 |%s
                                 |    
@@ -646,8 +640,7 @@ object Router {
                             """.stripMargin.format(
                   markLines(routes: _*),
 
-                  // alias
-                  controller.replace(".", "_"),
+                  controller,
 
                   // group by field
                   routes.groupBy(_.call.field).map {
@@ -658,7 +651,7 @@ object Router {
                         |%s
                         |%s
                       """.stripMargin.format(
-                        field.map(f => "class Reverse" + controller.replace(".", "_") + "_" + f + " {").getOrElse(""),
+                        field.map(f => "object " + controller.replace(".", "_") + "_" + f + " {").getOrElse(""),
 
                         // reverse method
                         routes.groupBy(r => (r.call.method, r.call.parameters.getOrElse(Nil).map(p => p.typeName))).map {
@@ -782,35 +775,29 @@ object Router {
                     }
 
                   }.mkString("\n"))
-            }.mkString("\n"))
+            ) + refReverseRouting(packageName, controller, routes)  
 
         }
-      }.mkString("\n")
+      }.flatten.toSeq
+      Array.tabulate(content.length){i => "routes_reverseRouting_"+i+".scala" -> content(i) }.toSeq
 
     }
 
     /**
      * Generate the routes definitions
      */
-    def routeDefinitions(rules: List[Rule]): String = {
-      rules.zipWithIndex.map {
-        case (r @ Route(_, _, _), i) =>
-          """
-            |%s
-            |private[this] lazy val %s%s = Route("%s", %s)
-          """.stripMargin.format(
-            markLines(r),
-            r.call.packageName.replace(".", "_") + "_" + r.call.controller.replace(".", "_") + "_" + r.call.method,
-            i,
-            r.verb.value,
-            "PathPattern(List(StaticPart(Routes.prefix)" + { if (r.path.parts.isEmpty) "" else """,StaticPart(Routes.defaultPrefix),""" } + r.path.parts.map(_.toString).mkString(",") + "))")
+    def includedRoutesDefinition(rules: List[Rule]): (String,String) = {
+      val includedRoute = new StringBuffer()
+      val defs = rules.zipWithIndex.map {
         case (r @ Include(_, _), i) =>
+          val ro = r.router.replace(".", "_")
+          includedRoute.append("case %s%s(handler) => handler \n".format(ro,i))
           """
             |%s
             |lazy val %s%s = Include(%s)
           """.stripMargin.format(
             markLines(r),
-            r.router.replace(".", "_"),
+            ro,
             i,
             r.router
           )
@@ -826,23 +813,29 @@ object Router {
             case Route(verb, path, call) => "(\"\"\"" + verb + "\"\"\", prefix + (if(prefix.endsWith(\"/\")) \"\" else \"/\") + \"\"\"" + path + "\"\"\",\"\"\"" + call + "\"\"\")"
             case Include(prefix, router) => router + ".documentation"
           }.mkString(","))
+        if (includedRoute.length != 0) {
+          defs -> (" orElse{ "+includedRoute.toString+" }")
+        } else 
+          defs -> includedRoute.toString
     }
 
     /**
      * Generate the routing stuff
      */
     def routing(routes: List[Rule]): String = {
+      //TODO:write per controller reverse routing to separate files, should return files Seq[(String, String)]
       Option(routes.zipWithIndex.map {
-        case (r @ Include(_, _), i) =>
-          """
-              |%s
-              |case %s%s(handler) => handler
+        case (r @ Route(_, _, _), i) =>
+         ("""
+            |%s
+            |private[this] lazy val %s%s = Route("%s", %s)
           """.stripMargin.format(
             markLines(r),
-            r.router.replace(".", "_"),
-            i
-          )
-        case (r @ Route(_, _, _), i) =>
+            r.call.packageName.replace(".", "_") + "_" + r.call.controller.replace(".", "_") + "_" + r.call.method,
+            i,
+            r.verb.value,
+            "PathPattern(List(StaticPart(Routes.prefix)" + { if (r.path.parts.isEmpty) "" else """,StaticPart(Routes.defaultPrefix),""" } + r.path.parts.map(_.toString).mkString(",") + "))")
+          +
           """
               |%s
               |case %s%s(params) => {
@@ -884,7 +877,7 @@ object Router {
             // definition
             """HandlerDef(this, """" + r.call.packageName + "." + r.call.controller + r.call.field.map("." + _).getOrElse("") + """", """" + r.call.method + """", """ + r.call.parameters.filterNot(_.isEmpty).map { params =>
               params.map("classOf[" + _.typeName + "]").mkString(", ")
-            }.map("Seq(" + _ + ")").getOrElse("Nil") + """)""")
+            }.map("Seq(" + _ + ")").getOrElse("Nil") + """)"""))
       }.mkString("\n")).filterNot(_.isEmpty).getOrElse {
 
         """Map.empty""" // Empty partial function
@@ -1194,18 +1187,18 @@ object Router {
 
   }
 
-  trait Routes {
-    self =>
-
+  trait Routes extends RoutesDispatcher {
+    self=>
     def documentation: Seq[(String, String, String)]
-
-    def routes: PartialFunction[RequestHeader, Handler]
 
     def setPrefix(prefix: String)
 
     def prefix: String
+  }
+  
+  trait RoutesDispatcher {
 
-    //
+    def routes: PartialFunction[RequestHeader, Handler]
 
     def badRequest(error: String) = Action { request =>
       play.api.Play.maybeApplication.map(_.global.onBadRequest(request, error)).getOrElse(play.api.DefaultGlobal.onBadRequest(request, error))
