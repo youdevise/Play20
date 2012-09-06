@@ -34,6 +34,8 @@ public class Application extends Controller {
         );
     }
     
+    
+    
     /**
      * Handle login form submission.
      */
@@ -44,7 +46,7 @@ public class Application extends Controller {
         } else {
             session("email", loginForm.get().email);
             return redirect(
-                routes.Projects.index()
+                controllers.routes.Projects.index()
             );
         }
     }
@@ -56,7 +58,7 @@ public class Application extends Controller {
         session().clear();
         flash("success", "You've been logged out");
         return redirect(
-            routes.Application.login()
+            controllers.routes.Application.login()
         );
     }
   

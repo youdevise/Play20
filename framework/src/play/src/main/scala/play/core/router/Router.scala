@@ -216,9 +216,10 @@ object Router {
 
       val (path, hash, date) = (file.path.replace(File.separator, "/"), Hash(file.byteArray), new java.util.Date().toString)
       val routerPackageImport = Option(file.name).filter(_.endsWith(".routes")).map(_.dropRight(".routes".size)).map("import " + _ + ".Routes").getOrElse("")
+      val routePackage = Option(file.name).filter(_.endsWith(".routes")).map(_.dropRight(".routes".size)).map("package " + _).getOrElse("")
       val routes = rules.collect { case r: Route => r }
       val defs = includedRoutesDefinition(rules)
-      reverseRouting(path,hash,date,routerPackageImport, routes) ++ Seq(
+      routing(path,hash,date,routes, routePackage) ++ reverseRouting(path,hash,date,routerPackageImport, routes) ++ Seq(
         ("routes_reverseRoutingJs.scala",
         """ |// @SOURCE:%s
             |// @HASH:%s
@@ -287,7 +288,7 @@ object Router {
             path,
             hash,
             date,
-            Option(file.name).filter(_.endsWith(".routes")).map(_.dropRight(".routes".size)).map("package " + _).getOrElse(""),
+            routePackage,
             additionalImports.map("import " + _).mkString("\n"),
             rules.collect { case Include(p, r) => "(\"" + p + "\"," + r + ")" }.mkString(","),
             defs._1,
@@ -327,6 +328,7 @@ object Router {
                 )
 
               },
+              
               (packageName+".routes".replace(".", "/") + "/ref.java") -> {
 
                 """ |// @SOURCE:%s
@@ -789,6 +791,7 @@ object Router {
     def includedRoutesDefinition(rules: List[Rule]): (String,String) = {
       val includedRoute = new StringBuffer()
       val defs = rules.zipWithIndex.map {
+
         case (r @ Include(_, _), i) =>
           val ro = r.router.replace(".", "_")
           includedRoute.append("case %s%s(handler) => handler \n".format(ro,i))
@@ -801,6 +804,7 @@ object Router {
             i,
             r.router
           )
+        case _ => ""
       }.mkString("\n") +
         """|
            |def documentation = List(%s).foldLeft(List.empty[(String,String,String)]) { (s,e) => e match {
@@ -822,21 +826,38 @@ object Router {
     /**
      * Generate the routing stuff
      */
-    def routing(routes: List[Rule]): String = {
-      //TODO:write per controller reverse routing to separate files, should return files Seq[(String, String)]
-      Option(routes.zipWithIndex.map {
-        case (r @ Route(_, _, _), i) =>
-         ("""
-            |%s
-            |private[this] lazy val %s%s = Route("%s", %s)
-          """.stripMargin.format(
+    def routing(path: String,hash: String,date: String, routes: List[Route], routePackage: String): Seq[(String, String)] = {
+      val routeVals = new StringBuffer()
+      val routersDef = "def routes: PartialFunction[RequestHeader, Handler]= {"
+      routes.groupBy(_.call.controller).map {
+        case (controller, routers) =>
+         val classHeader = (
+          """|// @SOURCE:%s
+             |// @HASH:%s
+             |// @DATE:%s
+             |%s
+             |import play.core._
+             |import play.core.Router._
+             |import play.core.j._
+             |
+             |import play.api.mvc._
+             |class %sRoutesDispatcher extends Router.RoutesDispatcher{
+             |
+             |""".stripMargin.format(
+                path,hash,date,routePackage, controller
+            )
+          )
+
+         val routingPerController = routers.zipWithIndex.map{ case (r,i) =>
+          routeVals.append("""|%s
+             |private[this] lazy val %s%s = Route("%s", %s)""".stripMargin.format(
             markLines(r),
             r.call.packageName.replace(".", "_") + "_" + r.call.controller.replace(".", "_") + "_" + r.call.method,
             i,
             r.verb.value,
-            "PathPattern(List(StaticPart(Routes.prefix)" + { if (r.path.parts.isEmpty) "" else """,StaticPart(Routes.defaultPrefix),""" } + r.path.parts.map(_.toString).mkString(",") + "))")
-          +
-          """
+            "PathPattern(List(StaticPart(Routes.prefix)" + { if (r.path.parts.isEmpty) "" else """,StaticPart(Routes.defaultPrefix),""" } + r.path.parts.map(_.toString).mkString(",") + "))\n"))
+          
+          ("""
               |%s
               |case %s%s(params) => {
               |   call%s { %s
@@ -877,12 +898,11 @@ object Router {
             // definition
             """HandlerDef(this, """" + r.call.packageName + "." + r.call.controller + r.call.field.map("." + _).getOrElse("") + """", """" + r.call.method + """", """ + r.call.parameters.filterNot(_.isEmpty).map { params =>
               params.map("classOf[" + _.typeName + "]").mkString(", ")
-            }.map("Seq(" + _ + ")").getOrElse("Nil") + """)"""))
-      }.mkString("\n")).filterNot(_.isEmpty).getOrElse {
-
-        """Map.empty""" // Empty partial function
-
-      }
+            }.map("Seq(" + _ + ")").getOrElse("Nil") + """)"""))}.mkString("\n") 
+            val currentVals = routeVals.toString
+            routeVals.setLength(0)
+            ("routes_routing"+controller+".scala") -> (classHeader+currentVals+"\n"+routersDef+routingPerController+"}}")  
+      }.toSeq
     }
 
     // --- Parser
