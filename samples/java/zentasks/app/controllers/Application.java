@@ -34,7 +34,11 @@ public class Application extends Controller {
         );
     }
     
-    
+     public static Result login22() {
+        return ok(
+            login.render(form(Login.class))
+        );
+    }
     
     /**
      * Handle login form submission.

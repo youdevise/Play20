@@ -327,7 +327,7 @@ object Router {
                   }.mkString("\n")
                 )
 
-              },
+              }/*,
               
               (packageName+".routes".replace(".", "/") + "/ref.java") -> {
 
@@ -350,7 +350,7 @@ object Router {
                   }.mkString("\n")
                 )
 
-              }
+              }*/
               )
 
             }
