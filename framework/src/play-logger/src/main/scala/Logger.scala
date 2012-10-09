@@ -169,7 +169,7 @@ object Logger extends LoggerLike {
     Logger.configure(
       Map("application.home" -> home.getAbsolutePath),
       Map.empty,
-      Mode.Test)
+      true)
   }
 
   /**
@@ -200,7 +200,9 @@ object Logger extends LoggerLike {
    * @param properties these properties will be added to the logger context (for example `application.home`)
    * @see http://logback.qos.ch/
    */
-  def configure(properties: Map[String, String] = Map.empty, levels: Map[String, ch.qos.logback.classic.Level] = Map.empty, mode: Mode.Value) {
+  def configure(properties: Map[String, String] = Map.empty,
+                levels: Map[String, ch.qos.logback.classic.Level] = Map.empty,
+                test: Boolean) {
 
     // Redirect JUL -> SL4FJ
     {
@@ -241,7 +243,7 @@ object Logger extends LoggerLike {
               Option(System.getProperty("logger.url")).map(new java.net.URL(_))
             }.
             orElse {
-              if (mode != Mode.Test) {
+              if (test) {
                 Option(this.getClass.getClassLoader.getResource("application-logger.xml")).orElse(Option(this.getClass.getClassLoader.getResource("logger.xml")))
               } else {
                 None

@@ -117,6 +117,26 @@ object PlayBuild extends Build {
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
 
+    lazy val PlayLoggerProject = Project(
+        "Play-Logger",
+        file("src/play-logger"),
+        settings = buildSettingsWithMIMA ++ Seq(
+            previousArtifact := Some("play" % {"play-logger_" + previousScalaVersion} % previousVersion),
+            publishTo := Some(playRepository),
+            scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
+            javacOptions ++= Seq("-source","1.6","-target","1.6", "-encoding", "UTF-8"),
+            javacOptions in doc := Seq("-source", "1.6"),
+            libraryDependencies ++= playLoggerDependencies,
+            publishArtifact in packageDoc := buildWithDoc,
+            publishArtifact in (Compile, packageSrc) := true
+        )
+    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+    .dependsOn({
+        Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+            PlayUtilsProject
+        )
+    }:_*)
+
     lazy val PlayJsonProject = Project(
         "Play-Json",
         file("src/play-json"),
@@ -157,6 +177,7 @@ object PlayBuild extends Build {
             TemplatesProject,
             AnormProject,
             PlayUtilsProject,
+            PlayLoggerProject,
             PlayJsonProject
         )
     }:_*)
@@ -232,6 +253,7 @@ object PlayBuild extends Build {
                 publish in PlayProject,
                 publish in TemplatesProject,
                 publish in PlayUtilsProject,
+                publish in PlayLoggerProject,
                 publish in PlayJsonProject,
                 publish in AnormProject,
                 publish in SbtPluginProject,
@@ -240,12 +262,13 @@ object PlayBuild extends Build {
                 publish in RoutesCompilerProject,
                 publish in TemplatesCompilerProject,
                 publish in PlayExceptionsProject
-            ) map { (_,_,_,_,_,_,_,_,_,_,_,_) => },
+            ) map { (_,_,_,_,_,_,_,_,_,_,_,_,_) => },
             publishLocal <<= (
                 publishLocal in SbtLinkProject,
                 publishLocal in PlayProject,
                 publishLocal in TemplatesProject,
                 publishLocal in PlayUtilsProject,
+                publishLocal in PlayLoggerProject,
                 publishLocal in PlayJsonProject,
                 publishLocal in AnormProject,
                 publishLocal in SbtPluginProject,
@@ -253,7 +276,7 @@ object PlayBuild extends Build {
                 publishLocal in RoutesCompilerProject,
                 publishLocal in TemplatesCompilerProject,
                 publishLocal in PlayExceptionsProject
-            ) map { (_,_,_,_,_,_,_,_,_,_,_) => }
+            ) map { (_,_,_,_,_,_,_,_,_,_,_,_) => }
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
      .dependsOn(PlayProject).aggregate(
@@ -261,6 +284,7 @@ object PlayBuild extends Build {
         AnormProject,
         TemplatesProject,
         PlayUtilsProject,
+        PlayLoggerProject,
         PlayJsonProject,
         TemplatesCompilerProject,
         RoutesCompilerProject,
@@ -337,11 +361,6 @@ object PlayBuild extends Build {
 
         val runtime = Seq(
             "io.netty"                          %    "netty"                    %   "3.5.2.Final",
-            "org.slf4j"                         %    "slf4j-api"                %   "1.6.6",
-            "org.slf4j"                         %    "jul-to-slf4j"             %   "1.6.6",
-            "org.slf4j"                         %    "jcl-over-slf4j"           %   "1.6.6",
-            "ch.qos.logback"                    %    "logback-core"             %   "1.0.7",
-            "ch.qos.logback"                    %    "logback-classic"          %   "1.0.7",
             "com.github.scala-incubator.io"     %%   "scala-io-file"            %   "0.4.1",
             "com.typesafe.akka"                 %    "akka-actor_2.10.0-M7"     %   "2.1-M2",
             "com.typesafe.akka"                 %    "akka-slf4j_2.10.0-M7"     %   "2.1-M2",
@@ -466,6 +485,14 @@ object PlayBuild extends Build {
             "org.codehaus.jackson"              %   "jackson-mapper-asl"        %   "1.9.9",
             "org.specs2"                        %    "specs2_2.10.0-M7"         %   "1.12.1.1"    %   "test"
         ) ++ joda
+
+        val playLoggerDependencies = Seq(
+            "org.slf4j"                         %    "slf4j-api"                %   "1.6.6",
+            "org.slf4j"                         %    "jul-to-slf4j"             %   "1.6.6",
+            "org.slf4j"                         %    "jcl-over-slf4j"           %   "1.6.6",
+            "ch.qos.logback"                    %    "logback-core"             %   "1.0.7",
+            "ch.qos.logback"                    %    "logback-classic"          %   "1.0.7"
+        )
 
         val consoleDependencies = Seq(
             "com.github.scala-incubator.io"     %%   "scala-io-file"            %   "0.4.1",

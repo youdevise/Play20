@@ -37,7 +37,8 @@ trait Server {
   // Configure the logger for the first time
   Logger.configure(
     Map("application.home" -> applicationProvider.path.getAbsolutePath),
-    mode = mode)
+    test = (mode == Mode.Test)
+  )
 
   // Start the main Invoker
   val invoker = Invoker(applicationProvider)

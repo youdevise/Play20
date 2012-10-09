@@ -255,7 +255,7 @@ trait Application {
           case key => key -> loggerConfig.getString(key, Some(validValues)).map(setLevel).get
         }.toMap
       }.getOrElse(Map.empty),
-      mode)
+      mode == Mode.Test)
 
   }
 
