@@ -103,11 +103,24 @@ object PlayBuild extends Build {
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
 
+    lazy val PlayUtilsProject = Project(
+        "Play-Utils",
+        file("src/play-utils"),
+        settings = buildSettingsWithMIMA ++ Seq(
+            previousArtifact := Some("play" % {"play-utils_" + previousScalaVersion} % previousVersion),
+            publishTo := Some(playRepository),
+            scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
+            javacOptions ++= Seq("-source","1.6","-target","1.6", "-encoding", "UTF-8"),
+            javacOptions in doc := Seq("-source", "1.6"),
+            publishArtifact in packageDoc := buildWithDoc,
+            publishArtifact in (Compile, packageSrc) := true
+        )
+    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+
     lazy val PlayJsonProject = Project(
         "Play-Json",
         file("src/play-json"),
         settings = buildSettingsWithMIMA ++ Seq(
-            // autoScalaLibrary := false,
             previousArtifact := Some("play" % {"play-json_" + previousScalaVersion} % previousVersion),
             publishTo := Some(playRepository),
             scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
@@ -138,7 +151,14 @@ object PlayBuild extends Build {
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
     .dependsOn({
-        Seq[sbt.ClasspathDep[sbt.ProjectReference]](SbtLinkProject, PlayExceptionsProject, TemplatesProject, AnormProject, PlayJsonProject)
+        Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+            SbtLinkProject,
+            PlayExceptionsProject,
+            TemplatesProject,
+            AnormProject,
+            PlayUtilsProject,
+            PlayJsonProject
+        )
     }:_*)
 
     lazy val PlayTestProject = Project(
@@ -207,11 +227,48 @@ object PlayBuild extends Build {
             buildRepositoryTask,
             distTask,
             generateAPIDocsTask,
-            publish <<= (publish in SbtLinkProject, publish in PlayProject, publish in TemplatesProject, publish in PlayJsonProject, publish in AnormProject, publish in SbtPluginProject, publish in ConsoleProject, publish in PlayTestProject, publish in RoutesCompilerProject, publish in TemplatesCompilerProject, publish in PlayExceptionsProject) map { (_,_,_,_,_,_,_,_,_,_,_) => },
-            publishLocal <<= (publishLocal in SbtLinkProject, publishLocal in PlayProject, publishLocal in TemplatesProject, publishLocal in PlayJsonProject, publishLocal in AnormProject, publishLocal in SbtPluginProject, publishLocal in ConsoleProject, publishLocal in RoutesCompilerProject, publishLocal in TemplatesCompilerProject, publishLocal in PlayExceptionsProject) map { (_,_,_,_,_,_,_,_,_,_) => }
+            publish <<= (
+                publish in SbtLinkProject,
+                publish in PlayProject,
+                publish in TemplatesProject,
+                publish in PlayUtilsProject,
+                publish in PlayJsonProject,
+                publish in AnormProject,
+                publish in SbtPluginProject,
+                publish in ConsoleProject,
+                publish in PlayTestProject,
+                publish in RoutesCompilerProject,
+                publish in TemplatesCompilerProject,
+                publish in PlayExceptionsProject
+            ) map { (_,_,_,_,_,_,_,_,_,_,_,_) => },
+            publishLocal <<= (
+                publishLocal in SbtLinkProject,
+                publishLocal in PlayProject,
+                publishLocal in TemplatesProject,
+                publishLocal in PlayUtilsProject,
+                publishLocal in PlayJsonProject,
+                publishLocal in AnormProject,
+                publishLocal in SbtPluginProject,
+                publishLocal in ConsoleProject,
+                publishLocal in RoutesCompilerProject,
+                publishLocal in TemplatesCompilerProject,
+                publishLocal in PlayExceptionsProject
+            ) map { (_,_,_,_,_,_,_,_,_,_,_) => }
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
-     .dependsOn(PlayProject).aggregate(SbtLinkProject, AnormProject, TemplatesProject, PlayJsonProject, TemplatesCompilerProject, RoutesCompilerProject, PlayProject, SbtPluginProject, ConsoleProject, PlayTestProject)
+     .dependsOn(PlayProject).aggregate(
+        SbtLinkProject,
+        AnormProject,
+        TemplatesProject,
+        PlayUtilsProject,
+        PlayJsonProject,
+        TemplatesCompilerProject,
+        RoutesCompilerProject,
+        PlayProject,
+        SbtPluginProject,
+        ConsoleProject,
+        PlayTestProject
+    )
 
     object BuildSettings {
 
