@@ -3,7 +3,6 @@ package play.api.libs.json
 import scala.collection._
 import Json._
 import scala.annotation.implicitNotFound
-import play.api.data.validation.ValidationError
 
 /**
  * Json deserializer: write an implicit to define a deserializer for any type.

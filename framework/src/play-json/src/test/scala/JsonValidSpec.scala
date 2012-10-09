@@ -5,7 +5,6 @@ import play.api.libs.json._
 import play.api.libs.json.Json._
 import scala.util.control.Exception._
 import java.text.ParseException
-import play.api.data.validation.ValidationError
 import Reads.constraints._
 import play.api.libs.json.util._
 

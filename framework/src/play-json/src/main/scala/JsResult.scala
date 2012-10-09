@@ -1,7 +1,6 @@
 package play.api.libs.json
 
 import Json._
-import play.api.data.validation.ValidationError
 
 case class JsSuccess[T](value: T, path: JsPath = JsPath()) extends JsResult[T] {
   def get:T = value

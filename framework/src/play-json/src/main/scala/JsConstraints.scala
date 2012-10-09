@@ -1,7 +1,14 @@
 package play.api.libs.json
 
-import play.api.data.validation.ValidationError
 import Json._
+
+/**
+ * A validation error.
+ *
+ * @param message the error message
+ * @param args the error message arguments
+ */
+case class ValidationError(message: String, args: Any*)
 
 trait ConstraintFormat {
   def of[A](implicit fmt: Format[A]): Format[A] = fmt

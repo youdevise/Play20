@@ -1,7 +1,5 @@
 package play.api.libs.json
 
-import play.api.data.validation.ValidationError
-
 sealed trait PathNode {
   def apply(json: JsValue): List[JsValue]
   def toJsonString: String
