@@ -365,15 +365,10 @@ object PlayBuild extends Build {
             "com.typesafe.akka"                 %    "akka-actor_2.10.0-M7"     %   "2.1-M2",
             "com.typesafe.akka"                 %    "akka-slf4j_2.10.0-M7"     %   "2.1-M2",
 
-            ("com.google.guava"                 %    "guava"                    %   "13.0.1" notTransitive())
-              .exclude("com.google.code.findbugs", "jsr305")
-            ,
-
+            "com.google.guava"                  %    "guava"                    %   "13.0.1",
             "com.google.code.findbugs"          %    "jsr305"                   %   "2.0.1",
 
-            ("org.avaje"                        %    "ebean"                    %   "2.8.1" notTransitive())
-              .exclude("javax.persistence", "persistence-api")
-            ,
+            "org.avaje.ebeanorm"                %    "avaje-ebeanorm"           %   "3.1.2" exclude("javax.persistence", "persistence-api"),
 
             "org.hibernate.javax.persistence"   %    "hibernate-jpa-2.0-api"    %   "1.0.1.Final",
             "com.h2database"                    %    "h2"                       %   "1.3.168",
@@ -469,9 +464,7 @@ object PlayBuild extends Build {
 
             "com.github.scala-incubator.io"     %%   "scala-io-file"            %   "0.4.1",
 
-            ("org.avaje"                        %    "ebean"                    %   "2.8.1"  notTransitive())
-              .exclude("javax.persistence", "persistence-api")
-            ,
+            "org.avaje.ebeanorm"                %    "avaje-ebeanorm"           %   "3.1.2" exclude("javax.persistence", "persistence-api"),
 
             "com.h2database"                    %    "h2"                       %   "1.3.168",
             "org.javassist"                     %    "javassist"                %   "3.16.1-GA",
@@ -495,8 +488,7 @@ object PlayBuild extends Build {
         )
 
         val consoleDependencies = Seq(
-            "com.github.scala-incubator.io"     %%   "scala-io-file"            %   "0.4.1",
-            "net.databinder.giter8"             %    "giter8_2.9.1"             %   "0.5.0"
+            "net.databinder.giter8"             %   "giter8_2.9.1"             %   "0.5.0" 
         )
 
         val templatesDependencies = Seq(
