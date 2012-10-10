@@ -13,7 +13,6 @@ import scalax.io.{ Resource }
 import org.joda.time.format.{ DateTimeFormatter, DateTimeFormat }
 import org.joda.time.DateTimeZone
 import collection.JavaConverters._
-
 /**
  * Controller that serves static resources.
  *
@@ -47,6 +46,25 @@ object Assets extends Controller {
 
   private val parsableTimezoneCode = " " + timeZoneCode
 
+  private val resourceLayout = ".*/(.*)\\.(.*)|(.*)\\.(.*)".r
+  
+  private val charsetItem = "(.*)=(.*)".r
+
+  private lazy val customCharsetMapping: Map[String, String] = Play.configuration.getString("asset.charsets").map{_.trim.split("\n").map{e=> 
+      charsetItem.unapplySeq(e).map(k => k.head -> k.last).getOrElse(throw new RuntimeException("illegal charset mapping found:"+e) )
+    }.toMap
+  }.getOrElse(Map[String,String]() )
+
+  private def configurableCharset(resource: String): String = {
+    val parts = resourceLayout.unapplySeq(resource).map(l=> l.filter(_ != null)).getOrElse(List[String]())
+    val r = parts match {
+      //if resource name contains multiple dots like foo.yy.zz, we will look up charset for extension yy.zz
+      case List(name, extension) if name.contains(".") => resourceLayout.unapplySeq(name).map(n => customCharsetMapping.get(n.last + "."+extension)).getOrElse(None)
+      case List(name, extension) => customCharsetMapping.get(extension)
+      case _ => None
+    }
+    r.map(c => "; charset=" +c).getOrElse("")
+  }
   /**
    * Generates an `Action` that serves a static resource.
    *
@@ -107,7 +125,7 @@ object Assets extends Controller {
                 val response = SimpleResult(
                   header = ResponseHeader(OK, Map(
                     CONTENT_LENGTH -> length.toString,
-                    CONTENT_TYPE -> MimeTypes.forFileName(file).getOrElse(BINARY),
+                    CONTENT_TYPE -> MimeTypes.forFileName(file).map(m=> m + configurableCharset(file)).getOrElse(BINARY),
                     DATE -> df.print({ new java.util.Date }.getTime)
                   )),
                   resourceData
