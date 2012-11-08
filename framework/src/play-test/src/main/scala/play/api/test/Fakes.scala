@@ -1,8 +1,8 @@
 package play.api.test;
 
 import play.api.mvc._
-import org.codehaus.jackson.JsonNode
 import play.api.libs.json.JsValue
+import java.lang.annotation.Annotation
 
 /**
  * Fake HTTP headers implementation.
@@ -130,6 +130,35 @@ object FakeRequest {
 }
 
 /**
+ * Cache for reflecting over the class loader, used by getTypesAnnotatedWith and friends to greatly improve fake
+ * application start up times in tests.
+ */
+object ReflectionsCache {
+
+  import ref.SoftReference
+  import org.reflections.{scanners, util, Reflections}
+  import collection.mutable
+  import java.util.concurrent.ConcurrentHashMap
+  import collection.JavaConverters._
+
+  @volatile private var reflectionsMapRef: Option[SoftReference[(ClassLoader, mutable.ConcurrentMap[String, Reflections])]] = None
+
+  def getReflections(classLoader: ClassLoader, pkg: String) = {
+    val reflectionsMap = reflectionsMapRef.flatMap(_.get).filter(_._1 == classLoader).map(_._2).getOrElse {
+      val map = new ConcurrentHashMap[String, Reflections]().asScala
+      reflectionsMapRef = Some(new SoftReference((classLoader, map), null))
+      map
+    }
+    reflectionsMap.get(pkg).getOrElse {
+      val reflections = new Reflections(new util.ConfigurationBuilder()
+          .addUrls(util.ClasspathHelper.forPackage(pkg, classLoader))
+          .setScanners(new scanners.TypeAnnotationsScanner()))
+      reflectionsMap.putIfAbsent(pkg, reflections).getOrElse(reflections)
+    }
+  }
+}
+
+/**
  * A Fake application.
  *
  * @param path The application path
@@ -153,4 +182,8 @@ case class FakeApplication(
     super.configuration ++ play.api.Configuration.from(additionalConfiguration)
   }
 
+  override def getTypesAnnotatedWith[T <: Annotation](packageName: String, annotation: Class[T]) = {
+    import collection.JavaConverters._
+    ReflectionsCache.getReflections(classloader, packageName).getStore.getTypesAnnotatedWith(annotation.getName).asScala.toSet
+  }
 }
