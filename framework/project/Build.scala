@@ -48,6 +48,7 @@ object PlayBuild extends Build {
         settings = buildSettingsWithMIMA ++ Seq(
             previousArtifact := Some("play" % "play_2.9.1" % previousVersion),
             libraryDependencies := runtime,
+            ivyXML := ivyXMLFluentLeniumExcludingNettyAndGuava,
             sourceGenerators in Compile <+= sourceManaged in Compile map PlayVersion,
             publishTo := Some(playRepository),
             scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
@@ -68,6 +69,7 @@ object PlayBuild extends Build {
       settings = buildSettingsWithMIMA ++ Seq(
         previousArtifact := Some("play" % "play-test_2.9.1" % previousVersion),
         libraryDependencies := testDependencies,
+        ivyXML := ivyXMLFluentLeniumExcludingNettyAndGuava,
         publishTo := Some(playRepository),
         scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
         javacOptions  ++= Seq("-encoding", "UTF-8","-Xlint:unchecked", "-Xlint:deprecation"),
@@ -125,6 +127,7 @@ object PlayBuild extends Build {
         file("."),
         settings = buildSettings ++ Seq(
             libraryDependencies := runtime,
+            ivyXML := ivyXMLFluentLeniumExcludingNettyAndGuava,
             cleanFiles ++= Seq(file("../dist"), file("../repository/local")),
             resetRepositoryTask,
             buildRepositoryTask,
@@ -191,6 +194,22 @@ object PlayBuild extends Build {
     }
 
     object Dependencies {
+
+        // NOTE (2013-05-15, Marc/Ash):
+        //   In back-porting the bumped dependency on newer versions of FluentLenium,
+        //   we have issues because Selenium Webdriver pulls in a newer version of Netty (3.5.2)
+        //   than Play can handle without pulling in additional changes from 2.1.
+        //
+        //   In order to exclude the transitive dependency, it is not as simple as using the SBT
+        //   exclude option (https://github.com/sbt/sbt/issues/436). The workaround is to specify
+        //   the dependency directly in terms of Ivy XML as follows:
+        //
+        val ivyXMLFluentLeniumExcludingNettyAndGuava =
+            <dependency org="org.fluentlenium" name="fluentlenium-festassert" rev="0.8.0" conf="test">
+                <exclude org="org.jboss.netty" module="netty"/>
+                <exclude org="io.netty" module="netty"/>
+                <exclude org="com.google.guava" module="guava"/>
+            </dependency>
 
         val runtime = Seq(
             "io.netty"                          %    "netty"                    %   "3.5.0.Final",
