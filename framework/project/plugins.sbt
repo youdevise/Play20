@@ -7,3 +7,5 @@ resolvers += Resolver.url("sbt-plugin-releases", new URL("http://scalasbt.artifa
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.3")
 
 addSbtPlugin("com.typesafe.sbtscalariform" % "sbtscalariform" % "0.3.1")
+
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.3")

@@ -26,6 +26,7 @@ object PlayBuild extends Build {
             resolvers += typesafe
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+     .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
     lazy val AnormProject = Project(
         "Anorm",
@@ -39,6 +40,7 @@ object PlayBuild extends Build {
             publishArtifact in (Compile, packageSrc) := true
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+     .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
     lazy val PlayProject = Project(
         "Play",
@@ -56,7 +58,9 @@ object PlayBuild extends Build {
             sourceGenerators in Compile <+= (dependencyClasspath in TemplatesProject in Runtime, packageBin in TemplatesProject in Compile, scalaSource in Compile, sourceManaged in Compile, streams) map ScalaTemplates,
             compile in (Compile) <<= PostCompile
         )
-    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*).dependsOn(TemplatesProject, AnormProject)
+    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+     .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+     .dependsOn(TemplatesProject, AnormProject)
     
     lazy val PlayTestProject = Project(
       "Play-Test",
@@ -71,7 +75,9 @@ object PlayBuild extends Build {
         publishArtifact in (Compile, packageSrc) := true,
         resolvers += typesafe
       )
-    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*).dependsOn(PlayProject)
+    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+     .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+     .dependsOn(PlayProject)
 
     def registerPlugin(module: ModuleID, localScalaVersion: String= buildScalaVersionForSbt) = 
         libraryDependencies <+= (sbtVersion) {
@@ -94,7 +100,9 @@ object PlayBuild extends Build {
         publishArtifact in (Compile, packageSrc) := false,
         resolvers += typesafe
       )
-    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*).dependsOn(PlayProject, TemplatesProject, ConsoleProject)
+    ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+     .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
+     .dependsOn(PlayProject, TemplatesProject, ConsoleProject)
 
     lazy val ConsoleProject = Project(
       "Console",
@@ -110,6 +118,7 @@ object PlayBuild extends Build {
         resolvers += typesafe
       )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+     .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
 
     val Root = Project(
         "Root",
@@ -125,6 +134,7 @@ object PlayBuild extends Build {
             publishLocal <<= (publishLocal in PlayProject, publishLocal in TemplatesProject, publishLocal in AnormProject, publishLocal in SbtPluginProject, publishLocal in ConsoleProject, publishLocal in PlayTestProject) map { (_,_,_,_,_,_) => }
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
+     .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
      .dependsOn(PlayProject).aggregate(AnormProject, TemplatesProject, PlayProject, SbtPluginProject, ConsoleProject, PlayTestProject)
 
     object BuildSettings {
